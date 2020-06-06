@@ -1,5 +1,5 @@
 #!/bin/bash -e
-
+#Modified version of patch-arch.sh in librealsense by Usaid Malik
 SRC_VERSION_NAME=linux
 
 ## from
@@ -22,21 +22,16 @@ mkdir kernel
 cd kernel
 
 ## Get the kernel
-wget https://www.kernel.org/pub/linux/kernel/v4.x/$KERNEL_NAME.tar.xz
-wget https://www.kernel.org/pub/linux/kernel/v4.x/$PATCH_NAME.xz
-wget https://www.kernel.org/pub/linux/kernel/v4.x/$PATCH_NAME.sign
-
+wget -q https://www.kernel.org/pub/linux/kernel/v5.x/$KERNEL_NAME.tar.xz
+wget -q https://www.kernel.org/pub/linux/kernel/v5.x/$PATCH_NAME.xz
+#wget https://www.kernel.org/pub/linux/kernel/v5.x/$KERNEL_NAME.sign # <-- .sign no longer is applied to $PATCH_NAME anymore
+#Removed since it doesn't seem to be used anyway
 echo "Extract the kernel"
 tar xf $KERNEL_NAME.tar.xz
 
 cd $KERNEL_NAME
 
 ## Get the patch
-
-# echo "Patching the kernel..."
-### patch  not working ?
-# xz -dc ../$PATCH_NAME.xz  | patch -p1
-
 
 echo "RealSense patch..."
 
@@ -72,16 +67,19 @@ cp $KBASE/drivers/media/usb/uvc/uvcvideo.ko ../uvcvideo.ko
 # Unload existing module if installed
 echo "Unloading existing uvcvideo driver..."
 sudo modprobe -r uvcvideo
+echo "Unloaded existing driver"
 
 cd ..
 
 ## Not sure yet about deleting and copying...
 
 # save the existing module
-
+echo "Save existing module"
 MODULE_NAME=/lib/modules/`uname -r`/kernel/drivers/media/usb/uvc/uvcvideo.ko
 
+#Saving backup of the module. To restore it, just do mv uvcvideo.ko.xz.backup uvcvideo.ko.xz
 if [ -e $MODULE_NAME ]; then
+    echo "Saving backup of .ko"
     sudo cp $MODULE_NAME $MODULE_NAME.backup
     sudo rm $MODULE_NAME
 
@@ -89,6 +87,7 @@ if [ -e $MODULE_NAME ]; then
 fi
 
 if [ -e $MODULE_NAME.xz ]; then
+    echo "Saving backup of .ko.xz"
     sudo cp $MODULE_NAME.xz $MODULE_NAME.xz.backup
     sudo rm $MODULE_NAME.xz
 
@@ -98,6 +97,7 @@ if [ -e $MODULE_NAME.xz ]; then
 fi
 
 if [ -e $MODULE_NAME.gz ]; then
+    echo "Saving backup of .gz"
     sudo cp $MODULE_NAME.gz $MODULE_NAME.gz.backup
     sudo rm $MODULE_NAME.gz
 
@@ -108,7 +108,9 @@ fi
 
 # Copy out to module directory
 
-
+echo "Copy out to module directory"
+#If an error happens on this line, your uvcvideo module is currently corrupted (you can check by running Cheese)
+#Restore the uvcvideo module from the backup if you can't figure out patching and just want to return things back to how it was
 sudo modprobe uvcvideo
 
 rm -rf kernel
